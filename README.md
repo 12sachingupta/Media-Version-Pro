@@ -109,3 +109,138 @@ We invite investors, strategic partners, and early adopters to join us in bringi
 ---
 
 This project proposal outlines a clear development and monetization roadmap, addressing a specific market need while highlighting the unique value proposition of MediaVersion Pro.
+
+
+
+
+Below is an updated production-level architecture that integrates a Ruby on Rails API as a microservice to handle advanced media version control tasks for the WordPress plugin (MediaVersion Pro). In this design, the WordPress plugin (built in PHP) continues to manage the WordPress side—providing the user interface and initial media operations—while a separate Ruby on Rails application processes and stores detailed versioning data, handles complex business logic (e.g., cloud offloading and background processing), and exposes a secure RESTful API for communication.
+
+---
+
+## Overall Architecture Overview
+
+- **WordPress Plugin (MediaVersion Pro):**  
+  - Written in PHP; responsible for capturing media file events (uploads, updates, etc.), presenting an intuitive admin dashboard, and invoking API calls.
+  - Contains core code, admin interfaces, public assets, and integration hooks.
+- **Ruby on Rails API (MediaVersion Pro API):**  
+  - A standalone Rails application that processes media versioning logic, stores detailed version histories in its database, and manages heavy tasks asynchronously.
+  - Exposes RESTful API endpoints that the WordPress plugin uses to send and retrieve versioning data.
+- **Communication Layer:**  
+  - Secure REST API calls (using tokens or OAuth) between the WordPress plugin and the Rails microservice.
+  - Optionally, asynchronous processing via webhooks and background jobs (e.g., using Sidekiq in Rails).
+
+---
+
+## File and Folder Structure
+
+### 1. WordPress Plugin (MediaVersion Pro)
+
+```plaintext
+MediaVersion-Pro/
+├── media-version-pro.php         # Main plugin file; plugin metadata and initialization.
+├── readme.txt                    # Plugin documentation for WordPress.org.
+├── LICENSE                       # GPL or similar license.
+├── README.md                     # Developer overview and usage instructions.
+├── composer.json                 # PHP dependency management (if needed).
+├── package.json                  # For frontend assets (CSS/JS build tools).
+├── /includes                     # Core PHP classes and functions.
+│   ├── class-mvp-core.php        # Bootstraps the plugin and loads modules.
+│   ├── class-mvp-media-manager.php  # Handles media file upload events.
+│   ├── class-mvp-media-versioning.php  # Prepares data and calls API endpoints.
+│   ├── class-mvp-multisite.php   # Manages multisite-specific logic.
+│   ├── class-mvp-rails-api.php   # Wraps API calls to the Rails service.
+│   └── helper-functions.php      # Utility functions.
+├── /admin                        # Admin-facing code.
+│   ├── class-mvp-admin.php       # Handles settings and dashboard pages.
+│   ├── /views                  # Admin dashboard templates.
+│   │   ├── dashboard.php         
+│   │   ├── media-history.php     
+│   │   └── settings.php          
+│   └── /assets                   
+│       ├── css/
+│       │   └── mvp-admin.css     
+│       └── js/
+│           └── mvp-admin.js      
+├── /public                       # Public-facing code (if needed).
+│   ├── class-mvp-public.php      
+│   └── /assets                   
+│       ├── css/
+│       │   └── mvp-public.css    
+│       ├── js/
+│       │   └── mvp-public.js     
+│       └── images/
+│           └── icons/            
+├── /languages                    # Localization files.
+│   └── media-version-pro.pot     
+└── /tests                        # Automated tests (PHPUnit).
+    ├── bootstrap.php             
+    ├── test-core.php             
+    └── phpunit.xml               
+```
+
+### 2. Ruby on Rails API (MediaVersion Pro API)
+
+This separate Rails application will be developed as a microservice. Its primary role is to manage the advanced version control for media files, process background jobs, and store detailed version histories.
+
+```plaintext
+rails_api/
+├── app/
+│   ├── controllers/
+│   │   └── api/
+│   │       └── v1/
+│   │           └── media_versions_controller.rb  # RESTful endpoints for media versioning.
+│   ├── models/
+│   │   └── media_file.rb                          # Model representing a media file and its versions.
+│   ├── serializers/
+│   │   └── media_file_serializer.rb               # Serializes media file data into JSON.
+│   ├── jobs/
+│   │   └── process_media_job.rb                   # Background job for heavy processing.
+│   └── views/                                     # (Typically API-only, so JSON responses.)
+├── config/
+│   ├── routes.rb                                  # API routes for versioning endpoints.
+│   ├── database.yml                               # Database configuration.
+│   └── secrets.yml                                # API keys, tokens, and other secrets.
+├── db/
+│   ├── migrate/                                   # Migration files.
+│   └── schema.rb                                  # Database schema.
+├── Gemfile                                        # Ruby gem dependencies.
+├── Gemfile.lock
+├── config.ru                                      # Rack configuration file.
+└── Rakefile
+```
+
+---
+
+## Integration & Data Flow
+
+1. **Event Capture (WordPress Plugin):**  
+   When a media file is uploaded or updated, the plugin (in `class-mvp-media-manager.php`) captures the event.  
+2. **Data Preparation & API Call:**  
+   The plugin’s versioning class (`class-mvp-media-versioning.php`) prepares the file metadata and version information, then calls the Rails API using the wrapper in `class-mvp-rails-api.php`.  
+3. **Rails API Processing:**  
+   The Rails API (via the `MediaVersionsController`) receives the data, stores a new version record in its database (using the `MediaFile` model), and triggers any background jobs (via `ProcessMediaJob`) for heavy tasks (like compressing images or offloading to cloud storage).  
+4. **Response & UI Update:**  
+   The Rails API returns a JSON response, which the WordPress plugin processes to update the admin dashboard (e.g., showing version history).  
+5. **Multisite Synchronization:**  
+   For multisite environments, the plugin will send synchronization requests to the Rails API, ensuring that all sites in the network have consistent version data.
+
+---
+
+## Benefits of Integrating Ruby on Rails
+
+- **Separation of Concerns:**  
+  Offloading media versioning logic and background processing to a dedicated Rails API keeps the WordPress plugin lightweight and responsive.
+- **Robust Background Processing:**  
+  Ruby on Rails (with Sidekiq or similar) excels at handling asynchronous jobs, making it ideal for processing large media files or batch operations.
+- **Scalable Storage and Performance:**  
+  The Rails service can efficiently manage and store version histories, integrate with cloud storage providers, and scale independently of the WordPress site.
+- **Enhanced API Flexibility:**  
+  A well-designed RESTful API enables future integration with other platforms and mobile applications.
+
+---
+
+## Conclusion
+
+By integrating a Ruby on Rails API into the MediaVersion Pro ecosystem, we can leverage the strengths of both PHP (for WordPress integration) and Rails (for heavy lifting and background processing). This combined architecture delivers a robust, scalable, and innovative solution for advanced media file version control that fills a critical gap in the WordPress ecosystem.
+
+We invite you to review this integrated approach and consider how it can revolutionize media management for content-heavy websites.
